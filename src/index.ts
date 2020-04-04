@@ -1,10 +1,10 @@
-const { traverse, builders, Walker } = require('@glimmer/syntax');
-const ParseResult = require('./parse-result');
+import { traverse, builders, Walker } from '@glimmer/syntax';
+import ParseResult from './parse-result';
 
 const PARSE_RESULT_FOR = new WeakMap();
 const NODES_INFO = new WeakMap();
 
-function parse(template) {
+function parse(template: string) {
   let result = new ParseResult(template, NODES_INFO);
 
   PARSE_RESULT_FOR.set(result.ast, result);
@@ -12,12 +12,12 @@ function parse(template) {
   return result.ast;
 }
 
-function print(ast) {
+function print(ast: any) {
   let parseResult = PARSE_RESULT_FOR.get(ast);
   return parseResult.print();
 }
 
-function transform(template, plugin) {
+function transform(template: string, plugin: any) {
   let ast;
   if (typeof template === 'string') {
     ast = parse(template);

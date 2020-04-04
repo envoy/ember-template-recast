@@ -1,5 +1,5 @@
-const { preprocess, print: _print, traverse } = require('@glimmer/syntax');
-const { sortByLoc, sourceForLoc } = require('./utils');
+import { preprocess, print as _print, traverse, AST } from '@glimmer/syntax';
+import { sortByLoc, sourceForLoc } from './utils';
 
 const reLines = /(.*?(?:\r\n?|\n|$))/gm;
 const leadingWhitespace = /(^\s+)/;
@@ -25,7 +25,7 @@ const voidTagNames = new Set([
   'wbr',
 ]);
 
-function getLines(source) {
+function getLines(source: any) {
   let result = source.match(reLines);
 
   return result.slice(0, -1);
@@ -38,11 +38,15 @@ function getLines(source) {
   * https://github.com/glimmerjs/glimmer-vm/pull/953
   * https://github.com/glimmerjs/glimmer-vm/pull/954
 */
-function fixASTIssues(sourceLines, ast) {
+function fixASTIssues(sourceLines: any, ast: any) {
   traverse(ast, {
     AttrNode(node) {
       let source = sourceForLoc(sourceLines, node.loc);
-      let [, , , equals, , quote] = source.match(attrNodeParts);
+      let attrNodePartsResults = source.match(attrNodeParts);
+      if (attrNodePartsResults === null) {
+        throw new Error(`Could not match attr node parts for ${source}`);
+      }
+      let [, , , equals, , quote] = attrNodePartsResults;
       let isValueless = !equals;
 
       // TODO: manually working around https://github.com/glimmerjs/glimmer-vm/pull/953
@@ -53,12 +57,12 @@ function fixASTIssues(sourceLines, ast) {
         node.loc.end.column = node.loc.start.column + node.name.length;
       }
 
-      node.isValueless = isValueless;
-      node.quoteType = quote ? quote : null;
+      (node as any).isValueless = isValueless;
+      (node as any).quoteType = quote ? quote : null;
     },
     TextNode(node, path) {
       let source = sourceForLoc(sourceLines, node.loc);
-      switch (path.parentNode.type) {
+      switch (path.parentNode!.type) {
         case 'AttrNode': {
           if (
             node.chars.length > 0 &&
@@ -72,9 +76,10 @@ function fixASTIssues(sourceLines, ast) {
         }
         case 'ConcatStatement': {
           // TODO: manually working around https://github.com/glimmerjs/glimmer-vm/pull/954
-          let isFirstPart = path.parentNode.parts.indexOf(node) === 0;
+          let parent = path.parentNode! as AST.ConcatStatement;
+          let isFirstPart = parent.parts.indexOf(node) === 0;
 
-          if (isFirstPart && node.loc.start.column > path.parentNode.loc.start.column + 1) {
+          if (isFirstPart && node.loc.start.column > path.parentNode!.loc.start.column + 1) {
             node.loc.start.column = node.loc.start.column - 1;
           }
         }
@@ -85,8 +90,29 @@ function fixASTIssues(sourceLines, ast) {
   return ast;
 }
 
-module.exports = class ParseResult {
-  constructor(template, nodesInfo) {
+interface NodeInfo {
+  node: AST.Node;
+  original: AST.Node;
+  source: string;
+
+  hadHash?: boolean;
+  hadParams?: boolean;
+  paramsSource?: string;
+  hashSource?: string;
+  postPathWhitespace?: string;
+  postHashWhitespace?: string;
+  postParamsWhitespace?: string;
+}
+
+export default class ParseResult {
+  private source: string[];
+  private _originalAst: AST.Template;
+  private nodeInfo = new Map<AST.Node, NodeInfo>();
+  private ancestor = new Map<any, any>();
+  private dirtyFields = new Map<AST.Node, Set<string>>();
+  public ast: AST.Template;
+
+  constructor(template: string, nodesInfo: WeakMap) {
     let ast = preprocess(template, {
       mode: 'codemod',
     });
@@ -98,13 +124,11 @@ module.exports = class ParseResult {
     this._originalAst = ast;
 
     this.nodeInfo = nodesInfo;
-    this.ancestor = new Map();
-    this.dirtyFields = new Map();
 
     this.ast = this.wrapNode(null, ast);
   }
 
-  wrapNode(ancestor, node) {
+  wrapNode(ancestor: any, node: any) {
     this.ancestor.set(node, ancestor);
 
     let nodeInfo = {
@@ -181,11 +205,11 @@ module.exports = class ParseResult {
    Used to associate the original source with a given node (while wrapping AST nodes
    in a proxy).
   */
-  sourceForLoc(loc) {
+  sourceForLoc(loc: any) {
     return sourceForLoc(this.source, loc);
   }
 
-  markAsDirty(node, property) {
+  markAsDirty(node: any, property: any) {
     let dirtyFields = this.dirtyFields.get(node);
     if (dirtyFields === undefined) {
       dirtyFields = new Set();
@@ -200,7 +224,7 @@ module.exports = class ParseResult {
     }
   }
 
-  _updateNodeInfoForParamsHash(ast, nodeInfo) {
+  _updateNodeInfoForParamsHash(_ast: any, nodeInfo: any) {
     let { original } = nodeInfo;
 
     let hadParams = (nodeInfo.hadParams = original.params.length > 0);
@@ -247,7 +271,15 @@ module.exports = class ParseResult {
     }
   }
 
-  _rebuildParamsHash(ast, nodeInfo, dirtyFields) {
+  _rebuildParamsHash(
+    ast:
+      | AST.MustacheStatement
+      | AST.SubExpression
+      | AST.ElementModifierStatement
+      | AST.BlockStatement,
+    nodeInfo: any,
+    dirtyFields: any
+  ) {
     let { original } = nodeInfo;
     if (dirtyFields.has('hash')) {
       if (ast.hash.pairs.length === 0) {
@@ -279,7 +311,7 @@ module.exports = class ParseResult {
         }
 
         nodeInfo.hashSource = ast.hash.pairs
-          .map((pair) => {
+          .map((pair: AST.HashPair) => {
             return this.print(pair);
           })
           .join(joinWith);
@@ -324,7 +356,7 @@ module.exports = class ParseResult {
     }
   }
 
-  print(_ast = this._originalAst) {
+  print(_ast: AST.Node = this._originalAst): string {
     if (!_ast) {
       return '';
     }
@@ -378,22 +410,25 @@ module.exports = class ParseResult {
         break;
       case 'ElementNode':
         {
-          let { selfClosing, children } = original;
+          let element = original as AST.ElementNode;
+          let { selfClosing, children } = element;
           let hadChildren = children.length > 0;
-          let hadBlockParams = original.blockParams.length > 0;
+          let hadBlockParams = element.blockParams.length > 0;
 
-          let openSource = `<${original.tag}`;
+          let openSource = `<${element.tag}`;
 
-          let originalOpenParts = []
-            .concat(original.attributes, original.modifiers, original.comments)
-            .sort(sortByLoc);
+          let originalOpenParts = [
+            ...element.attributes,
+            ...element.modifiers,
+            ...element.comments,
+          ].sort(sortByLoc);
 
           let postTagWhitespace;
           if (originalOpenParts.length > 0) {
             postTagWhitespace = this.sourceForLoc({
               start: {
-                line: original.loc.start.line,
-                column: original.loc.start.column + 1 /* < */ + original.tag.length,
+                line: element.loc.start.line,
+                column: element.loc.start.column + 1 /* < */ + element.tag.length,
               },
               end: originalOpenParts[0].loc.start,
             });
@@ -431,7 +466,7 @@ module.exports = class ParseResult {
           if (originalOpenParts.length > 0) {
             let postPartsSource = this.sourceForLoc({
               start: originalOpenParts[originalOpenParts.length - 1].loc.end,
-              end: hadChildren ? original.children[0].loc.start : original.loc.end,
+              end: hadChildren ? element.children[0].loc.start : element.loc.end,
             });
 
             let matchedWhitespace = postPartsSource.match(leadingWhitespace);
@@ -441,10 +476,10 @@ module.exports = class ParseResult {
           } else if (hadBlockParams) {
             let postPartsSource = this.sourceForLoc({
               start: {
-                line: original.loc.start.line,
-                column: original.loc.start.column + 1 + original.tag.length,
+                line: element.loc.start.line,
+                column: element.loc.start.column + 1 + element.tag.length,
               },
-              end: hadChildren ? original.children[0].loc.start : original.loc.end,
+              end: hadChildren ? element.children[0].loc.start : element.loc.end,
             });
 
             let matchedWhitespace = postPartsSource.match(leadingWhitespace);
@@ -455,7 +490,7 @@ module.exports = class ParseResult {
 
           let blockParamsSource = '';
           let postBlockParamsWhitespace = '';
-          if (original.blockParams.length > 0) {
+          if (element.blockParams.length > 0) {
             let blockParamStartIndex = nodeInfo.source.indexOf('as |');
             let blockParamsEndIndex = nodeInfo.source.indexOf('|', blockParamStartIndex + 4);
             blockParamsSource = nodeInfo.source.substring(
@@ -474,16 +509,16 @@ module.exports = class ParseResult {
 
           let childrenSource = hadChildren
             ? this.sourceForLoc({
-                start: original.children[0].loc.start,
-                end: original.children[children.length - 1].loc.end,
+                start: element.children[0].loc.start,
+                end: element.children[children.length - 1].loc.end,
               })
             : '';
 
           let closeSource = selfClosing
             ? ''
-            : voidTagNames.has(original.tag)
+            : voidTagNames.has(element.tag)
             ? ''
-            : `</${original.tag}>`;
+            : `</${element.tag}>`;
 
           if (dirtyFields.has('tag')) {
             openSource = `<${ast.tag}`;
@@ -518,7 +553,7 @@ module.exports = class ParseResult {
             dirtyFields.has('comments') ||
             dirtyFields.has('modifiers')
           ) {
-            let openParts = [].concat(ast.attributes, ast.modifiers, ast.comments).sort(sortByLoc);
+            let openParts = [...ast.attributes, ...ast.modifiers, ...ast.comments].sort(sortByLoc);
 
             openPartsSource = openParts.reduce((acc, part, index, parts) => {
               let partSource = this.print(part);
@@ -593,15 +628,15 @@ module.exports = class ParseResult {
 
           let openSource = this.sourceForLoc({
             start: original.loc.start,
-            end: original.path.loc.end,
+            end: (original as any).path.loc.end,
           });
 
           let endSource = this.sourceForLoc({
             start: nodeInfo.hadHash
-              ? original.hash.loc.end
+              ? (original as any).hash.loc.end
               : nodeInfo.hadParams
-              ? original.params[original.params.length - 1].loc.end
-              : original.path.loc.end,
+              ? (original as any).params[(original as any).params.length - 1].loc.end
+              : (original as any).path.loc.end,
             end: original.loc.end,
           }).trimLeft();
 
@@ -609,7 +644,7 @@ module.exports = class ParseResult {
             openSource =
               this.sourceForLoc({
                 start: original.loc.start,
-                end: original.path.loc.start,
+                end: (original as any).path.loc.start,
               }) + this.print(ast.path);
 
             dirtyFields.delete('path');
@@ -623,7 +658,8 @@ module.exports = class ParseResult {
               );
             }
 
-            openSource = `{{${ast.path.original}`;
+            // TODO: this is a logic error, assumes ast.path is a PathExpression but it could be a number of other things
+            openSource = `{{${(ast.path as AST.PathExpression).original}`;
             endSource = '}}';
 
             dirtyFields.delete('type');
@@ -667,15 +703,17 @@ module.exports = class ParseResult {
         break;
       case 'BlockStatement':
         {
+          let block = original as AST.BlockStatement;
+
           this._updateNodeInfoForParamsHash(ast, nodeInfo);
 
-          let hadProgram = original.program.body.length > 0;
-          let hadInverse = !!original.inverse;
-          let hadProgramBlockParams = original.program.blockParams.length > 0;
+          let hadProgram = block.program.body.length > 0;
+          let hadInverse = !!block.inverse;
+          let hadProgramBlockParams = block.program.blockParams.length > 0;
 
           let openSource = this.sourceForLoc({
-            start: original.loc.start,
-            end: original.path.loc.end,
+            start: block.loc.start,
+            end: block.path.loc.end,
           });
 
           let blockParamsSource = '';
@@ -683,10 +721,10 @@ module.exports = class ParseResult {
           if (hadProgramBlockParams) {
             let blockParamsSourceScratch = this.sourceForLoc({
               start: nodeInfo.hadHash
-                ? original.hash.loc.end
+                ? block.hash.loc.end
                 : nodeInfo.hadParams
-                ? original.params[original.params.length - 1].loc.end
-                : original.path.loc.end,
+                ? block.params[block.params.length - 1].loc.end
+                : block.path.loc.end,
               end: original.loc.end,
             });
 
@@ -710,11 +748,11 @@ module.exports = class ParseResult {
           {
             let openEndSourceScratch = this.sourceForLoc({
               start: nodeInfo.hadHash
-                ? original.hash.loc.end
+                ? block.hash.loc.end
                 : nodeInfo.hadParams
-                ? original.params[original.params.length - 1].loc.end
-                : original.path.loc.end,
-              end: original.loc.end,
+                ? block.params[block.params.length - 1].loc.end
+                : block.path.loc.end,
+              end: block.loc.end,
             });
 
             let startingOffset = 0;
@@ -733,23 +771,23 @@ module.exports = class ParseResult {
               .trimLeft();
           }
 
-          let programSource = hadProgram ? this.sourceForLoc(original.program.loc) : '';
+          let programSource = hadProgram ? this.sourceForLoc(block.program.loc) : '';
 
           let inversePreamble = '';
           if (hadInverse) {
             if (hadProgram) {
               inversePreamble = this.sourceForLoc({
-                start: original.program.loc.end,
-                end: original.inverse.loc.start,
+                start: block.program.loc.end,
+                end: block.inverse!.loc.start,
               });
             } else {
               let openEndSourceScratch = this.sourceForLoc({
                 start: nodeInfo.hadHash
-                  ? original.hash.loc.end
+                  ? block.hash.loc.end
                   : nodeInfo.hadParams
-                  ? original.params[original.params.length - 1].loc.end
-                  : original.path.loc.end,
-                end: original.loc.end,
+                  ? block.params[block.params.length - 1].loc.end
+                  : block.path.loc.end,
+                end: block.loc.end,
               });
 
               let indexOfFirstCurly = openEndSourceScratch.indexOf('}');
@@ -773,15 +811,15 @@ module.exports = class ParseResult {
           // In this case, because it also includes the preamble, we must also trim
           // that from our final inverse source.
           let inverseSource;
-          if (hadInverse && original.inverse.chained) {
-            inverseSource = this.sourceForLoc(original.inverse.body[0].loc) || '';
+          if (hadInverse && block.inverse!.chained) {
+            inverseSource = this.sourceForLoc(block.inverse!.body[0].loc) || '';
             inverseSource = inverseSource.slice(inversePreamble.length);
           } else {
-            inverseSource = hadInverse ? this.sourceForLoc(original.inverse.loc) : '';
+            inverseSource = hadInverse ? this.sourceForLoc(block.inverse!.loc) : '';
           }
 
           let endSource = '';
-          if (!ast.wasChained) {
+          if (!(ast as any).wasChained) {
             let firstOpenCurlyFromEndIndex = nodeInfo.source.lastIndexOf('{');
             let secondOpenCurlyFromEndIndex = nodeInfo.source.lastIndexOf(
               '{',
@@ -797,14 +835,15 @@ module.exports = class ParseResult {
             openSource =
               this.sourceForLoc({
                 start: original.loc.start,
-                end: original.path.loc.start,
+                end: block.path.loc.start,
               }) + _print(ast.path);
 
-            let pathIndex = endSource.indexOf(original.path.original);
+            // TODO: this is a logic error
+            let pathIndex = endSource.indexOf((block.path as AST.PathExpression).original);
             endSource =
               endSource.slice(0, pathIndex) +
-              ast.path.original +
-              endSource.slice(pathIndex + original.path.original.length);
+              (ast.path as AST.PathExpression).original +
+              endSource.slice(pathIndex + (block.path as AST.PathExpression).original.length);
 
             dirtyFields.delete('path');
           }
@@ -843,13 +882,13 @@ module.exports = class ParseResult {
               inverseSource = '';
               inversePreamble = '';
             } else {
-              if (ast.inverse.chained) {
+              if (ast.inverse!.chained) {
                 inversePreamble = '';
-                let inverseBody = ast.inverse.body[0];
-                inverseBody.wasChained = true;
+                let inverseBody = ast.inverse!.body[0];
+                (inverseBody as any).wasChained = true;
                 inverseSource = this.print(inverseBody);
               } else {
-                inverseSource = ast.inverse.body.map((child) => this.print(child)).join('');
+                inverseSource = ast.inverse!.body.map((child) => this.print(child)).join('');
               }
 
               if (!hadInverse) {
@@ -880,9 +919,14 @@ module.exports = class ParseResult {
         break;
       case 'HashPair':
         {
+          let hashPair = original as AST.HashPair;
           let { source } = nodeInfo;
-          let [, keySource, postKeyWhitespace, postEqualsWhitespace] = source.match(hashPairParts);
-          let valueSource = this.sourceForLoc(original.value.loc);
+          let hashPairPartsResult = source.match(hashPairParts);
+          if (hashPairPartsResult === null) {
+            throw new Error('Could not match hash pair parts');
+          }
+          let [, keySource, postKeyWhitespace, postEqualsWhitespace] = hashPairPartsResult;
+          let valueSource = this.sourceForLoc(hashPair.value.loc);
 
           if (dirtyFields.has('key')) {
             keySource = ast.key;
@@ -901,7 +945,13 @@ module.exports = class ParseResult {
         break;
       case 'AttrNode':
         {
+          let attrNode = original as AST.AttrNode;
           let { source } = nodeInfo;
+          let attrNodePartsResults = source.match(attrNodeParts);
+          if (attrNodePartsResults === null) {
+            throw new Error(`Could not match attr node parts for ${source}`);
+          }
+
           let [
             ,
             nameSource,
@@ -909,12 +959,12 @@ module.exports = class ParseResult {
             equals,
             postEqualsWhitespace,
             quote,
-          ] = source.match(attrNodeParts);
-          let valueSource = this.sourceForLoc(original.value.loc);
+          ] = attrNodePartsResults;
+          let valueSource = this.sourceForLoc(attrNode.value.loc);
 
           // does not include ConcatStatement because `_print` automatically
           // adds a `"` around them, meaning we do not need to add our own quotes
-          let wasQuotableValue = original.value.type === 'TextNode';
+          let wasQuotableValue = attrNode.value.type === 'TextNode';
 
           if (dirtyFields.has('name')) {
             nameSource = ast.name;
@@ -962,9 +1012,10 @@ module.exports = class ParseResult {
       case 'MustacheCommentStatement':
       case 'CommentStatement':
         {
-          let indexOfValue = nodeInfo.source.indexOf(original.value);
+          let commentStatement = original as AST.CommentStatement;
+          let indexOfValue = nodeInfo.source.indexOf(commentStatement.value);
           let openSource = nodeInfo.source.substring(0, indexOfValue);
-          let valueSource = original.value;
+          let valueSource = commentStatement.value;
           let endSource = nodeInfo.source.substring(indexOfValue + valueSource.length);
 
           if (dirtyFields.has('value')) {
@@ -978,7 +1029,7 @@ module.exports = class ParseResult {
         break;
       case 'TextNode':
         {
-          let { source } = nodeInfo.source;
+          let { source } = nodeInfo;
 
           if (dirtyFields.has('chars')) {
             source = ast.chars;
@@ -1007,10 +1058,10 @@ module.exports = class ParseResult {
       case 'BooleanLiteral':
       case 'NumberLiteral':
         {
-          let { source } = nodeInfo.source;
+          let { source } = nodeInfo;
 
           if (dirtyFields.has('value')) {
-            source = ast.value;
+            source = ast.value.toString();
             dirtyFields.delete('value');
           }
 
@@ -1035,4 +1086,4 @@ module.exports = class ParseResult {
 
     return output.join('');
   }
-};
+}
