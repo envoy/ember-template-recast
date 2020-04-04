@@ -902,6 +902,13 @@
   resolved "https://registry.yarnpkg.com/@types/tmp/-/tmp-0.0.33.tgz#1073c4bc824754ae3d10cfab88ab0237ba964e4d"
   integrity sha1-EHPEvIJHVK49EM+riKsCN7qWTk0=
 
+"@types/workerpool@^5.0.1":
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/@types/workerpool/-/workerpool-5.0.1.tgz#8d8d1e56779531381da17ea3b640972b21e3ccbc"
+  integrity sha512-X+fNY1+DTYNnMD6NkQeaMeiM8I2GhlaNoUHO3CJB/HyoDjG90e1IWOVhiYPDRVl9tN4C0Jth9eIHo8kWujZS5w==
+  dependencies:
+    "@types/node" "*"
+
 "@types/yargs-parser@*":
   version "15.0.0"
   resolved "https://registry.yarnpkg.com/@types/yargs-parser/-/yargs-parser-15.0.0.tgz#cb3f9f741869e20cce330ffbeb9271590483882d"

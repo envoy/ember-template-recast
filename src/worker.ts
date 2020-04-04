@@ -1,25 +1,18 @@
-const fs = require('fs');
-const workerpool = require('workerpool');
-const { parse, transform } = require('./index');
+import * as fs from 'fs';
+import workerpool from 'workerpool';
+import { parse, transform } from './index';
 
-/**
- * @typedef TransformResult
- * @property {boolean} changed
- * @property {boolean} skipped
- * @property {string} source
- */
+interface TransformResult {
+  changed: boolean;
+  skipped: boolean;
+  source: string;
+}
 
-/**
- * @typedef TransformOptions
- * @property {boolean} dry
- */
+interface TransformOptions {
+  dry: boolean;
+}
 
-/**
- * @param {string} transformPath
- * @param {string} filePath
- * @param {TransformOptions} options
- */
-function run(transformPath, filePath, options) {
+async function run(transformPath: string, filePath: string, options: TransformOptions) {
   const module = require(transformPath);
   const plugin = typeof module.default === 'function' ? module.default : module;
 
@@ -42,7 +35,7 @@ function run(transformPath, filePath, options) {
  * @param {string} filePath
  * @returns {Promise<string>}
  */
-function readFile(filePath) {
+function readFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.readFile(filePath, 'utf8', (err, contents) => {
       err ? reject(err) : resolve(contents);
@@ -50,13 +43,7 @@ function readFile(filePath) {
   });
 }
 
-/**
- * @param {Function} plugin
- * @param {string} filePath
- * @param {string} contents
- * @returns {TransformResult}
- */
-function applyTransform(plugin, filePath, contents) {
+function applyTransform(plugin: Function, filePath: string, contents: string): TransformResult {
   const code = plugin(
     {
       path: filePath,
@@ -64,7 +51,7 @@ function applyTransform(plugin, filePath, contents) {
     },
     {
       parse,
-      visit(ast, callback) {
+      visit(ast: any, callback: any) {
         const results = transform(ast, callback);
         return results && results.code;
       },
@@ -78,14 +65,11 @@ function applyTransform(plugin, filePath, contents) {
   };
 }
 
-/**
- *
- * @param {string} filePath
- * @param {TransformResult} output
- * @param {TransformOptions} options
- * @returns {Promise<TransformResult>}
- */
-function writeFile(filePath, output, options) {
+async function writeFile(
+  filePath: string,
+  output: TransformResult,
+  options: TransformOptions
+): Promise<TransformResult> {
   const { changed, source } = output;
 
   if (options.dry || !changed) {
