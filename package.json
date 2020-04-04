@@ -23,7 +23,8 @@
   "bin": "bin/ember-template-recast.js",
   "scripts": {
     "changelog": "lerna-changelog",
-    "lint:js": "eslint .",
+    "build": "tsc",
+    "lint": "eslint . --ext ts,js",
     "release": "release-it",
     "test": "jest"
   },
