@@ -24,11 +24,11 @@
   "scripts": {
     "changelog": "lerna-changelog",
     "build": "tsc",
-    "lint": "yarn build && yarn lint:files && yarn lint:tsc",
+    "lint": "yarn lint:files && yarn lint:tsc",
     "lint:files": "eslint . --ext ts,js",
     "lint:tsc": "tsc --noEmit",
     "release": "release-it",
-    "test": "yarn build && jest"
+    "test": "jest"
   },
   "dependencies": {
     "@glimmer/reference": "^0.62.1",

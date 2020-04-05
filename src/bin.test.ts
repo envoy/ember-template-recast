@@ -1,10 +1,20 @@
+import * as path from 'path';
+import { existsSync } from 'fs';
 import execa from 'execa';
 import { join } from 'path';
 import { createTempDir, TempDir } from 'broccoli-test-helper';
 import slash from 'slash';
 
+/* eslint-disable-next-line node/no-missing-require */
+const COMPILED_BIN_PATH = path.join(__dirname, '../lib/bin');
+if (!existsSync(COMPILED_BIN_PATH)) {
+  throw new Error('Missing compiled output, run `yarn build`!');
+}
+
 function run(args: string[], cwd: string) {
-  return execa(process.execPath, [require.resolve('../lib/bin'), ...args], { cwd });
+  return execa(process.execPath, [COMPILED_BIN_PATH, ...args], {
+    cwd,
+  });
 }
 
 const transform = `
