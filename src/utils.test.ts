@@ -1,5 +1,5 @@
-const { sortByLoc } = require('../lib/utils');
-const { builders } = require('@glimmer/syntax');
+import { sortByLoc } from './utils';
+import { builders } from '.';
 
 describe('utils', function () {
   describe('sortByLoc', function () {

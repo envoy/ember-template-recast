@@ -1,4 +1,5 @@
 import { builders, parse, print, transform } from './index';
+import type { AST } from '@glimmer/syntax';
 import { stripIndent } from 'common-tags';
 
 describe('ember-template-recast', function () {
@@ -39,7 +40,8 @@ describe('ember-template-recast', function () {
         other='single quote'
       }}`;
     let ast = parse(template);
-    ast.body[0].hash.pairs[0].key = 'derp';
+    let mustache = ast.body[0] as AST.MustacheStatement;
+    mustache.hash.pairs[0].key = 'derp';
 
     expect(print(ast)).toEqual(stripIndent`
       {{foo-bar
@@ -75,7 +77,8 @@ describe('ember-template-recast', function () {
   test('basic parse -> mutation -> print: preserves HTML entities', function () {
     let template = stripIndent`<div>&nbsp;</div>`;
     let ast = parse(template);
-    ast.body[0].children.push(builders.text('derp&nbsp;'));
+    let element = ast.body[0] as AST.ElementNode;
+    element.children.push(builders.text('derp&nbsp;'));
 
     expect(print(ast)).toEqual(stripIndent`<div>&nbsp;derp&nbsp;</div>`);
   });
@@ -83,10 +86,10 @@ describe('ember-template-recast', function () {
   describe('transform', () => {
     test('basic traversal', function () {
       let template = '{{foo-bar bar=foo}}';
-      let paths = [];
+      let paths: string[] = [];
       transform(template, function () {
         return {
-          PathExpression(node) {
+          PathExpression(node: AST.PathExpression) {
             paths.push(node.original);
           },
         };
@@ -99,11 +102,11 @@ describe('ember-template-recast', function () {
       let template = '<table></table>';
       let seen = new Set();
 
-      const result = transform(template, function ({ syntax }) {
+      const result = transform(template, function ({ syntax }: any) {
         const b = syntax.builders;
 
         return {
-          ElementNode(node) {
+          ElementNode(node: AST.ElementNode) {
             if (node.tag === 'table' && !seen.has(node)) {
               seen.add(node);
 
@@ -159,7 +162,7 @@ describe('ember-template-recast', function () {
 
     test('can accept an AST', function () {
       let template = '{{foo-bar bar=foo}}';
-      let paths = [];
+      let paths: string[] = [];
       let ast = parse(template);
       transform(ast, function () {
         return {
@@ -235,7 +238,11 @@ describe('ember-template-recast', function () {
     let { code } = transform(template, (env) => ({
       MustacheStatement(node) {
         let { builders: b } = env.syntax;
-        node.hash.pairs.push(b.pair('p1', b.string(node.hash.pairs[0].value.original)));
+
+        let value = node.hash.pairs[0].value as AST.StringLiteral;
+        let pair = b.pair('p1', b.string(value.original));
+
+        node.hash.pairs.push(pair);
       },
     }));
 

@@ -1,9 +1,9 @@
-const execa = require('execa');
-const { join } = require('path');
-const { createTempDir } = require('broccoli-test-helper');
-const slash = require('slash');
+import execa from 'execa';
+import { join } from 'path';
+import { createTempDir, TempDir } from 'broccoli-test-helper';
+import slash from 'slash';
 
-function run(args, cwd) {
+function run(args: string[], cwd: string) {
   return execa(process.execPath, [require.resolve('../lib/bin'), ...args], { cwd });
 }
 
@@ -24,54 +24,47 @@ module.exports = function ({ source }, { parse, visit }) {
 `;
 
 describe('ember-template-recast executable', function () {
-  let fixture;
+  let fixture: TempDir;
 
-  beforeEach(function () {
-    return createTempDir().then((_fixture) => {
-      fixture = _fixture;
+  beforeEach(async function () {
+    fixture = await createTempDir();
 
-      fixture.write({
-        files: {
-          'a.hbs': '{{hello-world}}',
-          'b.handlebars': '{{more-mustache foo=bar}}',
-          'unchanged.hbs': `nothing to do`,
-        },
-        'transform.js': transform,
-      });
-    });
-  });
-
-  test('updating files', function () {
-    return run(['files', '-c', '1'], fixture.path()).then(({ stdout }) => {
-      const out = fixture.read();
-
-      expect(stdout).toEqual(`Processing 3 files…
-Spawning 1 worker…
-Ok:        2
-Unchanged: 1`);
-
-      expect(out.files).toEqual({
-        'a.hbs': '{{wat-wat}}',
-        'b.handlebars': '{{wat-wat}}',
-        'unchanged.hbs': 'nothing to do',
-      });
-    });
-  });
-
-  test('dry run', function () {
-    return run(['files', '-c', '1', '-d'], fixture.path()).then(({ stdout }) => {
-      const out = fixture.read();
-
-      expect(stdout).toEqual(`Processing 3 files…
-Spawning 1 worker…
-Ok:        2
-Unchanged: 1`);
-
-      expect(out.files).toEqual({
+    fixture.write({
+      files: {
         'a.hbs': '{{hello-world}}',
         'b.handlebars': '{{more-mustache foo=bar}}',
         'unchanged.hbs': `nothing to do`,
-      });
+      },
+      'transform.js': transform,
+    });
+  });
+
+  test('updating files', async function () {
+    const { stdout } = await run(['files', '-c', '1'], fixture.path());
+    const out = fixture.read();
+
+    expect(stdout).toEqual(`Processing 3 files…
+Spawning 1 worker…
+Ok:        2
+Unchanged: 1`);
+    expect(out.files).toEqual({
+      'a.hbs': '{{wat-wat}}',
+      'b.handlebars': '{{wat-wat}}',
+      'unchanged.hbs': 'nothing to do',
+    });
+  });
+
+  test('dry run', async function () {
+    const { stdout } = await run(['files', '-c', '1', '-d'], fixture.path());
+    const out = fixture.read();
+    expect(stdout).toEqual(`Processing 3 files…
+Spawning 1 worker…
+Ok:        2
+Unchanged: 1`);
+    expect(out.files).toEqual({
+      'a.hbs': '{{hello-world}}',
+      'b.handlebars': '{{more-mustache foo=bar}}',
+      'unchanged.hbs': `nothing to do`,
     });
   });
 
@@ -88,42 +81,35 @@ Unchanged: 1`);
     }
   });
 
-  test('with a bad template', function () {
+  test('with a bad template', async function () {
     fixture.write({
       files: {
         'bad-template.hbs': `{{ not { valid (mustache) }`,
       },
     });
 
-    return run(['files', '-c', '1'], fixture.path()).then(({ stdout }) => {
-      const out = fixture.read();
-
-      expect(
-        stdout.includes(
-          `Processing 4 files…
+    const { stdout } = await run(['files', '-c', '1'], fixture.path());
+    const out = fixture.read();
+    expect(
+      stdout.includes(`Processing 4 files…
 Spawning 1 worker…
 Ok:        2
 Unchanged: 1
-Errored:   1`
-        )
-      ).toBeTruthy();
+Errored:   1`)
+    ).toBeTruthy();
 
-      let badFilePath = slash(join(fixture.path(), 'files/bad-template.hbs'));
-
-      expect(stdout).toEqual(expect.stringContaining(badFilePath));
-
-      expect(stdout.includes('Error: Parse error on line 1:')).toBeTruthy();
-
-      expect(out.files).toEqual({
-        'a.hbs': '{{wat-wat}}',
-        'b.handlebars': '{{wat-wat}}',
-        'unchanged.hbs': `nothing to do`,
-        'bad-template.hbs': `{{ not { valid (mustache) }`,
-      });
+    let badFilePath = slash(join(fixture.path(), 'files/bad-template.hbs'));
+    expect(stdout).toEqual(expect.stringContaining(badFilePath));
+    expect(stdout.includes('Error: Parse error on line 1:')).toBeTruthy();
+    expect(out.files).toEqual({
+      'a.hbs': '{{wat-wat}}',
+      'b.handlebars': '{{wat-wat}}',
+      'unchanged.hbs': `nothing to do`,
+      'bad-template.hbs': `{{ not { valid (mustache) }`,
     });
   });
 
-  test('concurrency', function () {
+  test('concurrency', async function () {
     const files = Array(300)
       .fill(1)
       .reduce((acc, _, i) => Object.assign(acc, { [`file${i}.hbs`]: '{{hello-world}}' }), {});
@@ -132,14 +118,12 @@ Errored:   1`
       'many-files': files,
     });
 
-    return run(['many-files', '-c', '4'], fixture.path()).then(({ stdout }) => {
-      expect(stdout).toEqual(`Processing 300 files…
+    const { stdout } = await run(['many-files', '-c', '4'], fixture.path());
+    expect(stdout).toEqual(`Processing 300 files…
 Spawning 4 workers…
 Ok:        300
 Unchanged: 0`);
 
-      const files = fixture.read();
-      expect(files['many-files']['file199.hbs']).toEqual('{{wat-wat}}');
-    });
+    expect(fixture.readText('many-files/file199.hbs')).toEqual('{{wat-wat}}');
   });
 });
