@@ -5,12 +5,12 @@ export function sourceForLoc(sourceLines: string[], loc?: AST.SourceLocation) {
     return '';
   }
 
-  let firstLine = loc.start.line - 1;
-  let lastLine = loc.end.line - 1;
+  const firstLine = loc.start.line - 1;
+  const lastLine = loc.end.line - 1;
   let currentLine = firstLine - 1;
-  let firstColumn = loc.start.column;
-  let lastColumn = loc.end.column;
-  let string = [];
+  const firstColumn = loc.start.column;
+  const lastColumn = loc.end.column;
+  const string = [];
   let line;
 
   while (currentLine < lastLine) {

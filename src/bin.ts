@@ -25,7 +25,7 @@ program
 if (program.args.length < 1 || !program.transform) {
   program.help();
 } else {
-  let options = {
+  const options = {
     cpus: program.cpus,
     dry: program.dry,
     silent: program.silent,

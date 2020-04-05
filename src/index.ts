@@ -4,8 +4,8 @@ import ParseResult from './parse-result';
 const PARSE_RESULT_FOR = new WeakMap();
 const NODES_INFO = new WeakMap();
 
-function parse(template: string) {
-  let result = new ParseResult(template, NODES_INFO);
+export function parse(template: string) {
+  const result = new ParseResult(template, NODES_INFO);
 
   PARSE_RESULT_FOR.set(result.ast, result);
 
@@ -13,7 +13,7 @@ function parse(template: string) {
 }
 
 export function print(ast: any) {
-  let parseResult = PARSE_RESULT_FOR.get(ast);
+  const parseResult = PARSE_RESULT_FOR.get(ast);
   return parseResult.print();
 }
 
@@ -25,15 +25,15 @@ export function transform(template: string, plugin: any) {
     // assume we were passed an ast
     ast = template;
   }
-  let syntax = {
+  const syntax = {
     parse,
     builders,
     print,
     traverse,
     Walker,
   };
-  let env = { syntax };
-  let visitor = plugin(env);
+  const env = { syntax };
+  const visitor = plugin(env);
   traverse(ast, visitor);
   return { ast, code: print(ast) };
 }
