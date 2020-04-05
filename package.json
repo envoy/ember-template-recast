@@ -16,11 +16,10 @@
   "license": "MIT",
   "author": "Robert Jackson <me@rwjblue.com>",
   "files": [
-    "bin/",
-    "src/"
+    "lib/"
   ],
-  "main": "src/index.js",
-  "bin": "bin/ember-template-recast.js",
+  "main": "lib/index.js",
+  "bin": "lib/bin.js",
   "scripts": {
     "changelog": "lerna-changelog",
     "build": "tsc",
