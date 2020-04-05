@@ -16,7 +16,8 @@
   "license": "MIT",
   "author": "Robert Jackson <me@rwjblue.com>",
   "files": [
-    "lib/"
+    "lib/",
+    "!lib/**/*.test.*"
   ],
   "main": "lib/index.js",
   "bin": "lib/bin.js",
@@ -43,6 +44,8 @@
     "workerpool": "^6.0.1"
   },
   "devDependencies": {
+    "@types/common-tags": "^1.8.0",
+    "@types/jest": "^25.2.1",
     "@types/workerpool": "^5.0.1",
     "@typescript-eslint/eslint-plugin": "^2.26.0",
     "@typescript-eslint/parser": "^2.26.0",

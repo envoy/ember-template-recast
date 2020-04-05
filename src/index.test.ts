@@ -1,6 +1,5 @@
-const { parse, print, transform } = require('../lib');
-const { builders } = require('@glimmer/syntax');
-const { stripIndent } = require('common-tags');
+import { builders, parse, print, transform } from './index';
+import { stripIndent } from 'common-tags';
 
 describe('ember-template-recast', function () {
   test('basic parse + print (no modification)', function () {
