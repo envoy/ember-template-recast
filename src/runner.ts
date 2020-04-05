@@ -118,7 +118,7 @@ class StatsCollector {
   }
 }
 
-module.exports = async function run(
+export default async function run(
   transformFile: string,
   filePaths: string[],
   options: { silent?: boolean; cpus: number }
@@ -141,9 +141,9 @@ module.exports = async function run(
     stats.print();
   } catch (err) {
     logger.stopSpinner();
-    handleError(err, logger);
+    return handleError(err, logger);
   }
-};
+}
 
 /**
  * Returns the location of the transform module on disk.
@@ -235,7 +235,7 @@ async function spawnWorkers(
   }
 }
 
-function handleError(err: any, logger: Logger) {
+function handleError(err: any, logger: Logger): 1 {
   if (err.code === 'MODULE_NOT_FOUND') {
     logger.error('Transform plugin not found');
   } else if (err instanceof NoFilesError) {
@@ -246,5 +246,6 @@ function handleError(err: any, logger: Logger) {
       logger.error(err.stack);
     }
   }
+
   return 1;
 }
