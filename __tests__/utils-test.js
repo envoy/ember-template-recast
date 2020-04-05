@@ -1,4 +1,4 @@
-const { sortByLoc } = require('../src/utils');
+const { sortByLoc } = require('../lib/utils');
 const { builders } = require('@glimmer/syntax');
 
 describe('utils', function () {

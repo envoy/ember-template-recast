@@ -4,7 +4,7 @@ const { createTempDir } = require('broccoli-test-helper');
 const slash = require('slash');
 
 function run(args, cwd) {
-  return execa(require.resolve('../bin/ember-template-recast'), args, { cwd });
+  return execa(process.execPath, [require.resolve('../lib/bin'), ...args], { cwd });
 }
 
 const transform = `
@@ -75,15 +75,17 @@ Unchanged: 1`);
     });
   });
 
-  test('with a bad transform', function () {
+  test('with a bad transform', async function () {
     fixture.write({
       'bad-transform.js': 'module.exports = syntax error',
     });
 
-    return run(['files', '-t', 'bad-transform.js'], fixture.path()).then(({ stdout }) => {
+    try {
+      await run(['files', '-t', 'bad-transform.js'], fixture.path());
+    } catch ({ stdout }) {
       expect(stdout.includes('Error: Unexpected identifier')).toBeTruthy();
       expect(stdout.includes(join(fixture.path(), 'bad-transform.js'))).toBeTruthy();
-    });
+    }
   });
 
   test('with a bad template', function () {

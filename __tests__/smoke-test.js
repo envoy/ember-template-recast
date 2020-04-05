@@ -1,4 +1,4 @@
-const { transform } = require('..');
+const { transform } = require('../lib');
 const { stripIndent } = require('common-tags');
 
 describe('"real life" smoke tests', function () {

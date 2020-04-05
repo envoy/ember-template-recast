@@ -1,6 +1,10 @@
 import type { AST } from '@glimmer/syntax';
 
-export function sourceForLoc(sourceLines: string[], loc: AST.SourceLocation) {
+export function sourceForLoc(sourceLines: string[], loc?: AST.SourceLocation) {
+  if (!loc) {
+    return '';
+  }
+
   let firstLine = loc.start.line - 1;
   let lastLine = loc.end.line - 1;
   let currentLine = firstLine - 1;

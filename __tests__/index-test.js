@@ -1,4 +1,4 @@
-const { parse, print, transform } = require('..');
+const { parse, print, transform } = require('../lib');
 const { builders } = require('@glimmer/syntax');
 const { stripIndent } = require('common-tags');
 
