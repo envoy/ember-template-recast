@@ -5,8 +5,7 @@ import { join } from 'path';
 import { createTempDir, TempDir } from 'broccoli-test-helper';
 import slash from 'slash';
 
-/* eslint-disable-next-line node/no-missing-require */
-const COMPILED_BIN_PATH = path.join(__dirname, '../lib/bin');
+const COMPILED_BIN_PATH = path.join(__dirname, '../lib/bin.js');
 if (!existsSync(COMPILED_BIN_PATH)) {
   throw new Error('Missing compiled output, run `yarn build`!');
 }
