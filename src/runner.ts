@@ -122,7 +122,7 @@ export default async function run(
   transformFile: string,
   filePaths: string[],
   options: { silent?: boolean; cpus: number }
-) {
+): Promise<void> {
   const logger = options.silent ? new SilentLogger() : new VerboseLogger();
   const stats = new StatsCollector(logger);
 
@@ -141,7 +141,8 @@ export default async function run(
     stats.print();
   } catch (err) {
     logger.stopSpinner();
-    return handleError(err, logger);
+    process.exitCode = 1;
+    handleError(err, logger);
   }
 }
 
@@ -235,7 +236,7 @@ async function spawnWorkers(
   }
 }
 
-function handleError(err: any, logger: Logger): 1 {
+function handleError(err: any, logger: Logger): void {
   if (err.code === 'MODULE_NOT_FOUND') {
     logger.error('Transform plugin not found');
   } else if (err instanceof NoFilesError) {
@@ -246,6 +247,4 @@ function handleError(err: any, logger: Logger): 1 {
       logger.error(err.stack);
     }
   }
-
-  return 1;
 }

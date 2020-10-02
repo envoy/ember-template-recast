@@ -31,5 +31,5 @@ if (program.args.length < 1 || !program.transform) {
     silent: program.silent,
   };
 
-  run(program.transform, program.args, options).then(process.exit);
+  run(program.transform, program.args, options);
 }
