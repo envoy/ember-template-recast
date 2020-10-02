@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import workerpool from 'workerpool';
 import { parse, transform } from './index';
+import type { TransformPluginBuilder } from './index';
+import type { AST } from '@glimmer/syntax';
 
 interface TransformResult {
   changed: boolean;
@@ -10,6 +12,21 @@ interface TransformResult {
 
 interface TransformOptions {
   dry: boolean;
+}
+
+interface FileInfo {
+  path: string;
+  source: string;
+}
+
+// TODO: make this the full API from ./index.ts
+interface TemplateRecast {
+  parse: typeof parse;
+  visit(ast: AST.Node, plugin: TransformPluginBuilder): string;
+}
+
+interface TemplateRecastPlugin {
+  (fileInfo: FileInfo, recast: TemplateRecast): string;
 }
 
 async function run(transformPath: string, filePath: string, options: TransformOptions) {
@@ -43,20 +60,25 @@ function readFile(filePath: string): Promise<string> {
   });
 }
 
-function applyTransform(plugin: Function, filePath: string, contents: string): TransformResult {
-  const code = plugin(
-    {
-      path: filePath,
-      source: contents,
+function applyTransform(
+  plugin: TemplateRecastPlugin,
+  filePath: string,
+  contents: string
+): TransformResult {
+  const fileInfo = {
+    path: filePath,
+    source: contents,
+  };
+
+  // TODO: deprecate `visit` and pass through full API from ./index.ts
+  const templateRecast = {
+    parse,
+    visit(ast: any, callback: any) {
+      const results = transform(ast, callback);
+      return results && results.code;
     },
-    {
-      parse,
-      visit(ast: any, callback: any) {
-        const results = transform(ast, callback);
-        return results && results.code;
-      },
-    }
-  );
+  };
+  const code = plugin(fileInfo, templateRecast);
 
   return {
     skipped: !code,
