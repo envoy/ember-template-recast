@@ -25,7 +25,7 @@
     "changelog": "lerna-changelog",
     "build": "tsc",
     "lint": "npm-run-all lint:*",
-    "lint:files": "eslint . --ext ts,js",
+    "lint:files": "eslint .",
     "lint:tsc": "tsc --noEmit",
     "prepare": "tsc",
     "release": "release-it",
