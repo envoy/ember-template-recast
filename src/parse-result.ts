@@ -62,7 +62,13 @@ function fixASTIssues(sourceLines: any, ast: any) {
     },
     TextNode(node, path) {
       const source = sourceForLoc(sourceLines, node.loc);
-      switch (path.parentNode!.type) {
+      if (path.parentNode === null) {
+        throw new Error(
+          'ember-template-recast: Error while sanitizing input AST: found TextNode with no parentNode'
+        );
+      }
+
+      switch (path.parentNode.type) {
         case 'AttrNode': {
           if (
             node.chars.length > 0 &&
@@ -76,10 +82,10 @@ function fixASTIssues(sourceLines: any, ast: any) {
         }
         case 'ConcatStatement': {
           // TODO: manually working around https://github.com/glimmerjs/glimmer-vm/pull/954
-          const parent = path.parentNode! as AST.ConcatStatement;
+          const parent = path.parentNode as AST.ConcatStatement;
           const isFirstPart = parent.parts.indexOf(node) === 0;
 
-          if (isFirstPart && node.loc.start.column > path.parentNode!.loc.start.column + 1) {
+          if (isFirstPart && node.loc.start.column > path.parentNode.loc.start.column + 1) {
             node.loc.start.column = node.loc.start.column - 1;
           }
         }
@@ -710,7 +716,6 @@ export default class ParseResult {
           this._updateNodeInfoForParamsHash(ast, nodeInfo);
 
           const hadProgram = block.program.body.length > 0;
-          const hadInverse = !!block.inverse;
           const hadProgramBlockParams = block.program.blockParams.length > 0;
 
           let openSource = this.sourceForLoc({
@@ -776,11 +781,11 @@ export default class ParseResult {
           let programSource = hadProgram ? this.sourceForLoc(block.program.loc) : '';
 
           let inversePreamble = '';
-          if (hadInverse) {
+          if (block.inverse) {
             if (hadProgram) {
               inversePreamble = this.sourceForLoc({
                 start: block.program.loc.end,
-                end: block.inverse!.loc.start,
+                end: block.inverse.loc.start,
               });
             } else {
               const openEndSourceScratch = this.sourceForLoc({
@@ -813,11 +818,11 @@ export default class ParseResult {
           // In this case, because it also includes the preamble, we must also trim
           // that from our final inverse source.
           let inverseSource;
-          if (hadInverse && block.inverse!.chained) {
-            inverseSource = this.sourceForLoc(block.inverse!.body[0].loc) || '';
+          if (block.inverse && block.inverse.chained) {
+            inverseSource = this.sourceForLoc(block.inverse.body[0].loc) || '';
             inverseSource = inverseSource.slice(inversePreamble.length);
           } else {
-            inverseSource = hadInverse ? this.sourceForLoc(block.inverse!.loc) : '';
+            inverseSource = block.inverse ? this.sourceForLoc(block.inverse.loc) : '';
           }
 
           let endSource = '';
@@ -880,20 +885,20 @@ export default class ParseResult {
           }
 
           if (dirtyFields.has('inverse')) {
-            if (ast.inverse === null) {
+            if (!ast.inverse) {
               inverseSource = '';
               inversePreamble = '';
             } else {
-              if (ast.inverse!.chained) {
+              if (ast.inverse.chained) {
                 inversePreamble = '';
-                const inverseBody = ast.inverse!.body[0];
+                const inverseBody = ast.inverse.body[0];
                 (inverseBody as any).wasChained = true;
                 inverseSource = this.print(inverseBody);
               } else {
-                inverseSource = ast.inverse!.body.map((child) => this.print(child)).join('');
+                inverseSource = ast.inverse.body.map((child) => this.print(child)).join('');
               }
 
-              if (!hadInverse) {
+              if (!block.inverse) {
                 // TODO: detect {{else}} vs {{else if foo}}
                 inversePreamble = '{{else}}';
               }
