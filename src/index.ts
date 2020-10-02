@@ -15,6 +15,19 @@ export function parse(template: string): AST.Template {
 
 export function print(ast: AST.Node): string {
   const parseResult = PARSE_RESULT_FOR.get(ast);
+
+  // TODO: write a test for this case
+  if (parseResult === undefined) {
+    return glimmerPrint(ast, {
+      entityEncoding: 'raw',
+      override: (ast) => {
+        if (NODE_INFO.has(ast)) {
+          return print(ast);
+        }
+      },
+    });
+  }
+
   return parseResult.print();
 }
 
