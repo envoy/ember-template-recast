@@ -128,7 +128,7 @@ export default class ParseResult {
     this.ast = this.wrapNode(null, ast);
   }
 
-  wrapNode(ancestor: any, node: any) {
+  private wrapNode(ancestor: any, node: any) {
     this.ancestor.set(node, ancestor);
 
     const nodeInfo = {
@@ -205,11 +205,11 @@ export default class ParseResult {
    Used to associate the original source with a given node (while wrapping AST nodes
    in a proxy).
   */
-  sourceForLoc(loc: any) {
+  private sourceForLoc(loc: any) {
     return sourceForLoc(this.source, loc);
   }
 
-  markAsDirty(node: any, property: any) {
+  private markAsDirty(node: any, property: any) {
     let dirtyFields = this.dirtyFields.get(node);
     if (dirtyFields === undefined) {
       dirtyFields = new Set();
@@ -224,7 +224,7 @@ export default class ParseResult {
     }
   }
 
-  _updateNodeInfoForParamsHash(_ast: any, nodeInfo: any) {
+  private _updateNodeInfoForParamsHash(_ast: any, nodeInfo: any) {
     const { original } = nodeInfo;
 
     const hadParams = (nodeInfo.hadParams = original.params.length > 0);
@@ -271,7 +271,7 @@ export default class ParseResult {
     }
   }
 
-  _rebuildParamsHash(
+  private _rebuildParamsHash(
     ast:
       | AST.MustacheStatement
       | AST.SubExpression

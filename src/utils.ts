@@ -1,6 +1,6 @@
 import type { AST } from '@glimmer/syntax';
 
-export function sourceForLoc(sourceLines: string[], loc?: AST.SourceLocation) {
+export function sourceForLoc(sourceLines: string[], loc?: AST.SourceLocation): string {
   if (!loc) {
     return '';
   }
@@ -36,7 +36,7 @@ export function sourceForLoc(sourceLines: string[], loc?: AST.SourceLocation) {
   return string.join('');
 }
 
-export function isSynthetic(node: AST.Node) {
+export function isSynthetic(node: AST.Node): boolean {
   if (node && node.loc) {
     return node.loc.source === '(synthetic)';
   }
@@ -44,7 +44,7 @@ export function isSynthetic(node: AST.Node) {
   return false;
 }
 
-export function sortByLoc(a: AST.Node, b: AST.Node) {
+export function sortByLoc(a: AST.Node, b: AST.Node): -1 | 0 | 1 {
   // be conservative about the location where a new node is inserted
   if (isSynthetic(a) || isSynthetic(b)) {
     return 0;
@@ -65,7 +65,7 @@ export function sortByLoc(a: AST.Node, b: AST.Node) {
   return 1;
 }
 
-export function compact(array: unknown[]) {
+export function compact(array: unknown[]): unknown[] {
   const newArray: unknown[] = [];
   array.forEach((a) => {
     if (typeof a !== 'undefined' && a !== null && a !== '') {
@@ -75,6 +75,6 @@ export function compact(array: unknown[]) {
   return newArray;
 }
 
-export function compactJoin(array: unknown[], delimeter = '') {
+export function compactJoin(array: unknown[], delimeter = ''): string {
   return compact(array).join(delimeter);
 }
