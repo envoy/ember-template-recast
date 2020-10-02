@@ -59,14 +59,17 @@ describe('ember-template-recast', function () {
     let b = builders;
     let { body } = ast;
 
-    function mutateAttributes(attributes) {
+    function mutateAttributes(attributes: AST.AttrNode[]) {
       let classAttribute = attributes.find(({ name }) => name === 'class');
+      if (classAttribute === undefined) {
+        throw new Error('bug: could not find class attribute');
+      }
       let index = attributes.indexOf(classAttribute);
       attributes[index] = b.attr('class', b.text('bar'));
     }
 
-    mutateAttributes(body[0].attributes);
-    mutateAttributes(body[2].attributes);
+    mutateAttributes((body[0] as AST.ElementNode).attributes);
+    mutateAttributes((body[2] as AST.ElementNode).attributes);
 
     expect(print(ast)).toEqual(stripIndent`
       <div class="bar" ...attributes></div>

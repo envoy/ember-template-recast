@@ -90,7 +90,7 @@ function fixASTIssues(sourceLines: any, ast: any) {
   return ast;
 }
 
-interface NodeInfo {
+export interface NodeInfo {
   node: AST.Node;
   original: AST.Node;
   source: string;
@@ -107,12 +107,12 @@ interface NodeInfo {
 export default class ParseResult {
   private source: string[];
   private _originalAst: AST.Template;
-  private nodeInfo = new Map<AST.Node, NodeInfo>();
+  private nodeInfo: WeakMap<AST.Node, NodeInfo>;
   private ancestor = new Map<any, any>();
   private dirtyFields = new Map<AST.Node, Set<string>>();
   public ast: AST.Template;
 
-  constructor(template: string, nodesInfo: WeakMap) {
+  constructor(template: string, nodeInfo: WeakMap<AST.Node, NodeInfo> = new WeakMap()) {
     let ast = preprocess(template, {
       mode: 'codemod',
     });
@@ -123,7 +123,7 @@ export default class ParseResult {
     this.source = source;
     this._originalAst = ast;
 
-    this.nodeInfo = nodesInfo;
+    this.nodeInfo = nodeInfo;
 
     this.ast = this.wrapNode(null, ast);
   }

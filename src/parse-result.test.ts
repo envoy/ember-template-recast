@@ -511,7 +511,8 @@ describe('ember-template-recast', function () {
       `;
 
       let ast = parse(template);
-      ast.body[0].attributes.push(builders.attr('foo-foo', builders.string('wheee')));
+      let element = ast.body[0] as AST.ElementNode;
+      element.attributes.push(builders.attr('foo-foo', builders.text('wheee')));
 
       expect(print(ast)).toEqual(stripIndent`
         <div data-foo
@@ -721,7 +722,8 @@ describe('ember-template-recast', function () {
     test('copying params and hash from a sub expression into a new MustacheStatement has correct whitespace', function () {
       let ast = parse('{{some-helper (foo "hi")}}');
 
-      let [sexpr] = ast.body[0].params;
+      let mustache = ast.body[0] as AST.MustacheStatement;
+      let sexpr = mustache.params[0] as AST.SubExpression;
       ast.body.push(builders.mustache(sexpr.path, sexpr.params, sexpr.hash));
 
       expect(print(ast)).toEqual(`{{some-helper (foo "hi")}}{{foo "hi"}}`);

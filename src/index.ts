@@ -1,12 +1,12 @@
-import { traverse, builders, Walker } from '@glimmer/syntax';
+import { traverse, builders, Walker, print as glimmerPrint } from '@glimmer/syntax';
 import type { AST, NodeVisitor } from '@glimmer/syntax';
-import ParseResult from './parse-result';
+import ParseResult, { NodeInfo } from './parse-result';
 
-const PARSE_RESULT_FOR = new WeakMap();
-const NODES_INFO = new WeakMap();
+const PARSE_RESULT_FOR = new WeakMap<AST.Node, ParseResult>();
+const NODE_INFO = new WeakMap<AST.Node, NodeInfo>();
 
 export function parse(template: string): AST.Template {
-  const result = new ParseResult(template, NODES_INFO);
+  const result = new ParseResult(template, NODE_INFO);
 
   PARSE_RESULT_FOR.set(result.ast, result);
 
